@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { Download } from 'lucide-react';
+import { Download, RotateCw } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { ImageData } from '@/types/contact-sheet';
 
 const ContactSheet = () => {
   const [images, setImages] = useState<ImageData[]>([]);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 9) {
@@ -62,21 +63,24 @@ const ContactSheet = () => {
     toast.loading('Generating PDF...');
 
     try {
+      const width = orientation === 'portrait' ? 2480 : 3508; // A4 at 300 DPI
+      const height = orientation === 'portrait' ? 3508 : 2480;
+
       const canvas = await html2canvas(previewElement, {
         useCORS: true,
         allowTaint: true,
         logging: false,
-        width: 2480, // A4 at 300 DPI
-        height: 3508,
+        width,
+        height,
       });
 
       const pdf = new jsPDF({
-        orientation: 'portrait',
+        orientation: orientation,
         unit: 'px',
-        format: [2480, 3508]
+        format: [width, height]
       });
 
-      pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, 2480, 3508);
+      pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, width, height);
       pdf.save('contact-sheet.pdf');
       
       toast.dismiss();
@@ -85,6 +89,10 @@ const ContactSheet = () => {
       toast.dismiss();
       toast.error('Failed to generate PDF. Please try again.');
     }
+  };
+
+  const toggleOrientation = () => {
+    setOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
   };
 
   return (
@@ -110,9 +118,20 @@ const ContactSheet = () => {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">A4 Preview</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">A4 Preview</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleOrientation}
+                className="flex items-center gap-2"
+              >
+                <RotateCw className="w-4 h-4" />
+                {orientation === 'portrait' ? 'Switch to Landscape' : 'Switch to Portrait'}
+              </Button>
+            </div>
             <div id="a4-preview">
-              <A4Preview images={images} />
+              <A4Preview images={images} orientation={orientation} />
             </div>
           </div>
 
